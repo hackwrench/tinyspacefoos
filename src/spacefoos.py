@@ -21,6 +21,7 @@ import ogre.io.OIS as OIS
 from SkyManager import SkyManager
 
 from WorldController import (WorldController)
+from EntityController import (EntityController)
 
 from math import *
 
@@ -57,13 +58,17 @@ class SkyBoxApplication(sf.Application):
 
         self.camera.setFarClipDistance(5000.0)
         self.camera.setNearClipDistance(1.0)
-        self.camera.setPosition(0.0, 1.0, -1.1)
+        #self.camera.setPosition(0.0, 1.0, -1.1)
+        self.camera.setPosition(0.0, 1.0, 5.0)
+        
+        self.sceneManager.setShadowTechnique(ogre.SHADOWTYPE_TEXTURE_ADDITIVE)
 
         
     def _createFrameListener(self):
         self.frameListener = SkyBoxListener(self.renderWindow, self.camera, self.sceneManager, self)
         self.frameListener.doc = self.doc
         self.root.addFrameListener(self.frameListener)
+        self.frameListener.showDebugOverlay(False)
 
 
 class SkyBoxListener(sf.FrameListener):
@@ -76,7 +81,10 @@ class SkyBoxListener(sf.FrameListener):
         self.animateText = False
         self.totalTime = 0
         self.wireframe= False
-        self.worldController = WorldController(self.sceneManager, self.camera)
+        
+        self.entityController = EntityController()
+        
+        self.worldController = WorldController(self.sceneManager, self.entityController, self.camera)
         
         self.worldController.onPageLoad(ogre.Vector3(0.0, 0.0, 0.0))
         
@@ -87,6 +95,8 @@ class SkyBoxListener(sf.FrameListener):
         retVal = True
         if self._isToggleKeyDown(OIS.KC_ESCAPE):
             retVal = False
+        
+        self.worldController.onUpdate(frameEvent.timeSinceLastFrame)
         
         return retVal
 
