@@ -1,6 +1,7 @@
 import ogre.renderer.OGRE as ogre
 import random
 import math
+import ogre.io.OIS as OIS
 
 class TangentBundle:
     def __init__(self, sphere):
@@ -11,13 +12,22 @@ class TangentBundle:
         self.ru = ogre.Vector3()
         self.rv = ogre.Vector3()
         self.pos = ogre.Vector3()
+        self.minScale = self.sphere[1]
+        self.maxScale = self.sphere[1] * 1.05
     def newPosition(self):
         return self.pos
+    
+    def changeHeight(self, signal, dt):
         
+        self.sphere[1] += self.sphere[1] * 0.1 * dt * signal
+        if(self.sphere[1] > self.maxScale):
+            self.sphere[1] = self.maxScale
+        if(self.sphere[1] < self.minScale):
+            self.sphere[1] = self.minScale
     def setPosition(self, pos):
-        self.normal = pos - ogre.Vector3(0.0, 0.0, 0.0)
+        self.normal = pos - self.sphere[0]._getDerivedPosition()
         self.normal.normalise()
-        self.pos = self.normal * self.sphere[1]
+        self.pos = self.sphere[0]._getDerivedPosition() + self.normal * self.sphere[1]
       
     def setPosition2(self, pos):
         print "posIn: ", pos
@@ -66,7 +76,7 @@ class WorldController:
         
         numOfEnts = 200
         for i in range(numOfEnts):
-            tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * 1.2])
+            tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * 1.05])
             entity = self.entityController.createEntity(self.scnMgr, tangentBundle)
             theta = random.uniform(0, 2.0 * ogre.Math.PI)
             phi = random.uniform(-ogre.Math.PI / 2, ogre.Math.PI / 2)
@@ -78,7 +88,7 @@ class WorldController:
             planetNode = self.homePlanet[0]
             scale = self.homePlanet[1]
             pos = planetNode._getDerivedPosition()
-            entNode.setPosition(pos + orient.yAxis() * scale * 1.2)
+            entNode.setPosition(pos + orient.yAxis() * scale * 1.05)
             entNode.setOrientation(orient)
     
     def loadPlayer(self, pageCoords):
@@ -88,8 +98,9 @@ class WorldController:
         planet = self.planets[randPlanetId]
         self.homePlanet = planet
         
-        tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * 1.2])
+        tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * 1.01])
         entity = self.entityController.createEntity(self.scnMgr, tangentBundle)
+        entity.speed = 1.0 / ogre.Math.PI * 10.0
         theta = random.uniform(0, 2.0 * ogre.Math.PI)
         
         entNode = entity.sceneNode
@@ -98,9 +109,16 @@ class WorldController:
         planetNode = self.homePlanet[0]
         scale = self.homePlanet[1]
         pos = planetNode._getDerivedPosition()
-        entNode.setPosition(pos + orient.yAxis() * scale * 1.2)
+        entNode.setPosition(pos + orient.yAxis() * scale * 1.01)
         
-        #entNode.attachObject(self.camera)
+        entNode.attachObject(self.camera)
+        camRot = ogre.Degree(180.0).valueRadians()
+        camOrient = ogre.Quaternion(ogre.Radian(camRot), ogre.Vector3(0.0, 1.0, 0.0))
+        self.camera.setPosition(0.0, 0.2, -1.0)
+        self.camera.setOrientation(camOrient)
+        
+        self.playerEnt = entity
+        
         #self.camera.setPosition(playerNode.getPosition() + ogre.Vector3(0.0, 25.0, 0.0))
         #self.camera.setAutoTracking(True, entNode)
         
@@ -116,10 +134,11 @@ class WorldController:
         
     def loadPlanets(self, pageCoords):
         #create spheres
-        numOfSpheres = 50
+        numOfSpheres = 25
         
-        
-        self._createPlanet(pageCoords, 1.0)
+        minSize = 25.0
+        maxSize = 50.0
+        self._createPlanet(pageCoords, minSize)
         
         for i in range(1, numOfSpheres):
             #WARNING: Does not generate uniform randoms on the sphere
@@ -128,15 +147,34 @@ class WorldController:
             randomOrient = ogre.Quaternion(randAnglePhi, ogre.Vector3(0.0, 1.0, 0.0))
             randomOrient = randomOrient * ogre.Quaternion(randAnglePho, ogre.Vector3(1.0, 0.0, 0.0))
             
-            randDistance = random.uniform(3.0, 15.0)
-            randScale = random.uniform(1.0, 50.0)
-            self._createPlanet(pageCoords + randomOrient.zAxis() * randDistance, 1.0)
+            randDistance = random.uniform(200.0, 250.0)
+            randScale = random.uniform(minSize, maxSize)
+            self._createPlanet(pageCoords + randomOrient.zAxis() * randDistance, randScale)
+            
+    def onKeyDownEvent(self, key):
+        """
+        This is stupid. Just make sure components of signal are independent. That is, left/right maps to x, up and down maps to y. Don't mix them up.
+        Fix it downstream or fix it here.
+        """
+        if key == OIS.KC_LEFT:
+            self.playerEnt.onSignal(ogre.Vector3(1.0, 0.0, 0.0))
+        elif key == OIS.KC_RIGHT:
+            self.playerEnt.onSignal(ogre.Vector3(-1.0, 0.0, 0.0))
+        if key == OIS.KC_UP:
+            self.playerEnt.onSignal(ogre.Vector3(0.0, 1.0, 0.0))
+        elif key == OIS.KC_DOWN:
+            self.playerEnt.onSignal(ogre.Vector3(0.0, -1.0, 0.0))
+            
             
     def _createPlanet(self, pos, scale):
         ent = self.scnMgr.createEntity("geosphere4500.mesh")
         ent.setMaterialName("GridNormalMap")
-        mat = ogre.MaterialManager.getSingleton().getByName("GridNormalMap").setReceiveShadows(True)
+        mesh = ent.getMesh()
+        mesh.setAutoBuildEdgeLists(True)
+        mesh.buildEdgeList()
         
+        mat = ogre.MaterialManager.getSingleton().getByName("GridNormalMap").setReceiveShadows(True)
+        ent.setCastShadows(True)
         bb = ent.getMesh().getBoundingSphereRadius()
         scaleSphere = 1.0 / bb * scale
         print "radius: ", bb

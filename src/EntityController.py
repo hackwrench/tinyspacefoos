@@ -33,11 +33,19 @@ class Entity:
     def __init__(self, node, tangentBundle):
         self.sceneNode = node
         self.tangentBundle = tangentBundle
-        self.speed = 1.0 / ogre.Math.PI * random.uniform(1.0, 10.0)#angular speed
+        self.speed = 1.0 / ogre.Math.PI * random.uniform(0.1, 0.5)#angular speed
         self.rotU = 0.0
         self.rotV = 0.0
         self.direction = 1.0
+        self.signal = ogre.Vector3(0, 0, 0)
         return None
+    
+    def onSignal(self, signal):
+        """
+        Note, signal components must be independent! left/right maps to x, up/down maps to y.
+        """
+        self.signal += signal
+    
     
     def getBasisFromDirection(self, side, upVector):
         
@@ -49,8 +57,9 @@ class Entity:
             zVec = ogre.Vector3(0.0, 0.0, 1.0)
             
         zVec.normalise()
-        yVec = zVec.crossProduct(xVec)
-        yVec.normalise()
+        #yVec = zVec.crossProduct(xVec)
+        #yVec.normalise()
+        yVec = upVector.normalisedCopy()
         return xVec, yVec, zVec
     
     def _advance(self, dt):
@@ -60,7 +69,15 @@ class Entity:
         xVec, yVec, zVec = self.getBasisFromDirection(orient.xAxis(), tangentBundle.normal)
         pos = tangentBundle.newPosition()
         orient = ogre.Quaternion(xVec, yVec, zVec)
-        self.sceneNode.setPosition(pos + orient.zAxis() * self.speed * dt)
+        xAxis = orient.xAxis()
+        xAxis *= self.signal.x
+        
+        self.tangentBundle.changeHeight(self.signal.y, dt)
+        
+                    
+        self.signal = ogre.Vector3(0, 0, 0)
+        
+        self.sceneNode.setPosition(pos + (orient.zAxis() + xAxis) * self.speed * dt)
         self.sceneNode.setOrientation(orient)
             
     def _advance4(self, dt):

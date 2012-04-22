@@ -57,11 +57,13 @@ class SkyBoxApplication(sf.Application):
         cm.setCompositorEnabled(self.viewport, "Bloom", True)
 
         self.camera.setFarClipDistance(5000.0)
-        self.camera.setNearClipDistance(1.0)
+        self.camera.setNearClipDistance(0.2)
         #self.camera.setPosition(0.0, 1.0, -1.1)
-        self.camera.setPosition(0.0, 1.0, 5.0)
+        
         
         self.sceneManager.setShadowTechnique(ogre.SHADOWTYPE_TEXTURE_ADDITIVE)
+        
+        self.keys = {}
 
         
     def _createFrameListener(self):
@@ -89,13 +91,61 @@ class SkyBoxListener(sf.FrameListener):
         self.worldController.onPageLoad(ogre.Vector3(0.0, 0.0, 0.0))
         
         self.skyManager = SkyManager(self.sceneManager, self.renderWindow.getViewport(0))
-                    
+        self.renderWindow.addListener(self.skyManager.caelumSystem)
+        ogre.Root.getSingletonPtr().addFrameListener(self.skyManager.caelumSystem)
+        
+        self._setupInput()
+    
+    def _setupInput(self):
+        # Initialize OIS.
+        windowHnd = self.renderWindow.getCustomAttributeInt("WINDOW")
+        self.InputManager = OIS.createPythonInputSystem([("WINDOW", str(windowHnd))])
+ 
+        # Create all devices, only catch joystick exceptions since most people use Key/Mouse.
+        self.Keyboard = self.InputManager.createInputObjectKeyboard(OIS.OISKeyboard, self.bufferedKeys)
+        self.Mouse = self.InputManager.createInputObjectMouse(OIS.OISMouse, self.bufferedMouse)
+        
+        
+        try:
+            self.Joy = self.InputManager.createInputObjectJoyStick(OIS.OISJoyStick, self.bufferedJoy)
+        except:
+            self.Joy = False
+ 
+        #Set initial mouse clipping size.
+        self.windowResized(self.renderWindow)
+ 
+        # Register as a Window listener.
+        ogre.WindowEventUtilities.addWindowEventListener(self.renderWindow, self);
+    
+    def keyPressed(self, frameEvent):
+        if self.Keyboard.isKeyDown(OIS.KC_ESCAPE):
+            return False             
+        
+        if self.Keyboard.isKeyDown(OIS.KC_LEFT):
+            self.worldController.onKeyDownEvent(OIS.KC_LEFT)
+        if self.Keyboard.isKeyDown(OIS.KC_RIGHT):
+            self.worldController.onKeyDownEvent(OIS.KC_RIGHT)
+        if self.Keyboard.isKeyDown(OIS.KC_UP):
+            self.worldController.onKeyDownEvent(OIS.KC_UP)
+        if self.Keyboard.isKeyDown(OIS.KC_DOWN):
+            self.worldController.onKeyDownEvent(OIS.KC_DOWN)
+        
+        return True   
                           
     def frameRenderingQueued(self, frameEvent):
         retVal = True
-        if self._isToggleKeyDown(OIS.KC_ESCAPE):
-            retVal = False
         
+        self.Keyboard.capture()
+        self.Mouse.capture()
+        
+        if not self.keyPressed(frameEvent):
+            return False
+        """
+        if self._isToggleKeyDown(OIS.KC_LEFT, 0.4):
+            self.worldController.onKeyDownEvent(OIS.KC_LEFT)
+        elif self._isToggleKeyDown(OIS.KC_RIGHT, 0.4):
+            self.worldController.onKeyDownEvent(OIS.KC_RIGHT)
+        """
         self.worldController.onUpdate(frameEvent.timeSinceLastFrame)
         
         return retVal

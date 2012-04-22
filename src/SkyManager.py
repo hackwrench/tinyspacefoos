@@ -27,7 +27,7 @@ class SkyManager:
         #self.caelumSystem.setObserverLatitude(ogre.Degree(0))
         #self.caelumSystem.setObserverLongitude(ogre.Degree(0))
         self.caelumSystem.setEnsureSingleLightSource(True)
-        #self.caelumSystem.getUniversalClock().setTimeScale(500)
+        self.caelumSystem.getUniversalClock().setTimeScale(500)
         
         dome = self.caelumSystem.getSkyDome()
         
