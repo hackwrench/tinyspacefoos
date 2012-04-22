@@ -78,7 +78,7 @@ class WorldController:
         
         numOfEnts = 200
         for i in range(numOfEnts):
-            tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * 1.05])
+            tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * random.uniform(1.0, 1.05)])
             entity = self.entityController.createEntity(self.scnMgr, self.phyMgr, tangentBundle)
             theta = random.uniform(0, 2.0 * ogre.Math.PI)
             phi = random.uniform(-ogre.Math.PI / 2, ogre.Math.PI / 2)
@@ -172,6 +172,8 @@ class WorldController:
             
         if key == OIS.KC_SPACE:
             self.playerEnt.onWeaponFire(self.phyMgr)
+        if key == OIS.KC_LSHIFT:
+            self.playerEnt.onCycleWeapon()
             
             
     def _createPlanet(self, pos, scale):
@@ -194,7 +196,7 @@ class WorldController:
         #node.setOrientation(tempOrient)
         node.setScale(scaleSphere, scaleSphere, scaleSphere)
         self.planets.append((node, scale))
-        
+        #MAGIC NUMBERS!!!
         self.phyMgr.createSphere(node.getPosition(), scale * 1.0089, node)
             
                                     

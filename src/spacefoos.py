@@ -24,6 +24,8 @@ from WorldController import (WorldController)
 from EntityController import (EntityController)
 from PhysicsManager import (PhysicsManager)
 
+import ogre.sound.OgreAL as OgreAL
+
 from math import *
 
 
@@ -64,7 +66,16 @@ class SkyBoxApplication(sf.Application):
         
         self.sceneManager.setShadowTechnique(ogre.SHADOWTYPE_TEXTURE_ADDITIVE)
         
-        self.keys = {}
+        
+        self.soundManager = OgreAL.SoundManager()
+        sound = self.soundManager.createSound("Engine_Hum", "sndaoa2.ogg", True)
+        sound.setGain(0.8)
+        sound.play()
+        sound = self.soundManager.createSound("Engine_Hum2", "sndaoa1.ogg", True)
+        sound.setGain(1.2)
+        sound.play()
+        sound = self.soundManager.createSound("Music", "tinyworldsmix.ogg", True)
+        sound.play()
 
         
     def _createFrameListener(self):
@@ -133,6 +144,9 @@ class SkyBoxListener(sf.FrameListener):
             self.worldController.onKeyDownEvent(OIS.KC_DOWN)
         if self.Keyboard.isKeyDown(OIS.KC_SPACE):
             self.worldController.onKeyDownEvent(OIS.KC_SPACE)
+        if self.Keyboard.isKeyDown(OIS.KC_LSHIFT):
+        #if self._isToggleKeyDown(OIS.KC_LSHIFT, 0.1): #why this no work?
+            self.worldController.onKeyDownEvent(OIS.KC_LSHIFT)
         
         return True   
                           
