@@ -22,6 +22,7 @@ from SkyManager import SkyManager
 
 from WorldController import (WorldController)
 from EntityController import (EntityController)
+from PhysicsManager import (PhysicsManager)
 
 from math import *
 
@@ -85,8 +86,9 @@ class SkyBoxListener(sf.FrameListener):
         self.wireframe= False
         
         self.entityController = EntityController()
-        
-        self.worldController = WorldController(self.sceneManager, self.entityController, self.camera)
+        self.phyManager = PhysicsManager(self.sceneManager)
+        #self.phyManager.createWeaponPool()
+        self.worldController = WorldController(self.sceneManager, self.phyManager, self.entityController, self.camera)
         
         self.worldController.onPageLoad(ogre.Vector3(0.0, 0.0, 0.0))
         
@@ -129,6 +131,8 @@ class SkyBoxListener(sf.FrameListener):
             self.worldController.onKeyDownEvent(OIS.KC_UP)
         if self.Keyboard.isKeyDown(OIS.KC_DOWN):
             self.worldController.onKeyDownEvent(OIS.KC_DOWN)
+        if self.Keyboard.isKeyDown(OIS.KC_SPACE):
+            self.worldController.onKeyDownEvent(OIS.KC_SPACE)
         
         return True   
                           
@@ -147,6 +151,7 @@ class SkyBoxListener(sf.FrameListener):
             self.worldController.onKeyDownEvent(OIS.KC_RIGHT)
         """
         self.worldController.onUpdate(frameEvent.timeSinceLastFrame)
+        self.phyManager.update(frameEvent.timeSinceLastFrame)
         
         return retVal
 

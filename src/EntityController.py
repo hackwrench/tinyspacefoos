@@ -10,7 +10,7 @@ class EntityController:
         
         return None
     
-    def createEntity(self, scnMgr, tangentBundle):
+    def createEntity(self, scnMgr, phyMgr, tangentBundle):
         
         playerNode = scnMgr.getRootSceneNode().createChildSceneNode()
         playerEnt = scnMgr.createEntity("RZR-002.mesh")
@@ -38,6 +38,9 @@ class Entity:
         self.rotV = 0.0
         self.direction = 1.0
         self.signal = ogre.Vector3(0, 0, 0)
+        
+        self.timer = ogre.Timer()
+        self.shootDuration = 100
         return None
     
     def onSignal(self, signal):
@@ -46,6 +49,15 @@ class Entity:
         """
         self.signal += signal
     
+    def onWeaponFire(self, phyMgr):
+        
+        if(self.timer.getMilliseconds() > self.shootDuration):
+             impulse = self.sceneNode.getOrientation().zAxis()
+             impulse *= 7.0
+             phyMgr.fireCube(self.sceneNode.getPosition(), impulse)
+             self.timer.reset()
+        
+        
     
     def getBasisFromDirection(self, side, upVector):
         

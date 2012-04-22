@@ -7,12 +7,14 @@ import ogre.physics.OgreBulletC as collisions
 import ogre.physics.OgreBulletD as dynamics
 
 class OgreMotionState(bullet.btMotionState): 
-    def __init__(self, initalPosition, node): 
+    def __init__(self, initalPosition, node, tb=None, rb=None): 
         bullet.btMotionState.__init__(self)
         self.Pos=initalPosition 
         self.Position=ogre.Vector3() 
         self.Quaternion=ogre.Quaternion() 
         self.node = node
+        self.tb = tb
+        self.rb = rb
     def getWorldTransform(self, WorldTrans): 
         WorldTrans.setOrigin(self.Pos.getOrigin())
         WorldTrans.setBasis(self.Pos.getBasis())
@@ -24,6 +26,15 @@ class OgreMotionState(bullet.btMotionState):
      
         self.node.setPosition(self.Position)
         self.node.setOrientation(self.Quaternion)
+        
+        
+        if(self.tb is not None):
+            self.tb.setPosition(self.Position)
+            normal = -self.tb.normal*3000.0 / self.tb.dsqr
+            gravity = bullet.btVector3(normal.x, normal.y, normal.z)
+            self.rb.setGravity(gravity)           
+            self.rb.applyGravity() 
+        
         
         
         #print "setWorldTrans", WorldTrans 
@@ -46,7 +57,7 @@ class PhysicsManager:
         self.solver = bullet.btSequentialImpulseConstraintSolver()
         
         self.world = bullet.btDiscreteDynamicsWorld(self.dispatcher, self.broadphase, self.solver, self.collisionConfiguration)
-        self.world.setGravity(bullet.btVector3(0, -10, 0))
+        self.world.setGravity(bullet.btVector3(0, 0, 0))
         
         self.bodies = []
         self.shapes = []
@@ -54,6 +65,11 @@ class PhysicsManager:
         self.motionStates = []
         self.elapsedTime = 0.0
         self.duration = 10.0
+        
+        self.curCubeIdx = 0
+        
+        self.tangentBundle = None
+        
         return None
     
     def __del__(self):
@@ -62,51 +78,53 @@ class PhysicsManager:
             del i
         for i in self.bodies:
             del i
-        
-        
     
-    def createWorldRep(self):
-        #create a ground plane.
+    def setTangentBundle(self, bundle):
+        self.tangentBundle
         
-        """
-        groundShape = collisions.StaticPlaneCollisionShape(ogre.Vector3(0, 1, 0), 0)
-        groundBody = dynamics.RigidBody("GroundPlane", self.world)
-        groundBody.setStaticShape(groundShape, 0.1, 0.8)
-        """
-        groundShape = bullet.btStaticPlaneShape(bullet.btVector3(0.0, 1.0, 0.0), 0.0)
-        groundMotionState = bullet.btDefaultMotionState(bullet.btTransform(bullet.btQuaternion(0, 0, 0, 1), bullet.btVector3(0, 0, 0)))
-        
-        groundBodyCI = bullet.btRigidBody.btRigidBodyConstructionInfo(0, groundMotionState, groundShape, bullet.btVector3(0, 0, 0))
-        groundBody = bullet.btRigidBody(groundBodyCI)
-        
-        self.world.addRigidBody(groundBody)
-        
-        self.shapes.append(groundShape)
-        self.bodies.append(groundBody)
-        self.motionStates.append(groundMotionState)
-        
-        #self.world.getDispatchInfo().m_enableSPU = True
-        
-        #create cubes
-        startY = 1.0
-        startX = -8.0
-        dx = 1.0
-        dy = 1.0
-        numOfCubes = 50
-        for i in range(0, numOfCubes):
-            pos = ogre.Vector3(startX + i * dx, startY + i * dy, -15.0)
-            self.cubes.append(self._addCube(pos))
-        self.startY = startY
-        self.startX = startX
-        self.dx = dx
-        self.dy = dy
-        
+    def fireCube(self, pos, force):
+        cube = self.cubes[(self.curCubeIdx) % len(self.cubes)]
+        self.curCubeIdx += 1
+        transform = bullet.btTransform()
+        transform.setOrigin(bullet.btVector3(pos.x, pos.y, pos.z))
+        cube.clearForces()
+        cube.setLinearVelocity(bullet.btVector3(0.0, 0.0, 0.0))
+        cube.setWorldTransform(transform)
+        impulse = bullet.btVector3(force.x, force.y, force.z)
+        cube.applyImpulse(impulse, bullet.btVector3(0.0, 0.0, 0.0))
+        #cube.applyForce(impulse, bullet.btVector3(0.0, 0.0, 0.0))
+            
+    def createWeaponPool(self, tb):
+        poolNum = 50
+        pos = ogre.Vector3(0, 0, 0)
+        for i in range(0, poolNum):
+            self.cubes.append(self._addCube(pos, ogre.Vector3(0.05, 0.05, 0.05), tangentBundle=tb))    
     
-    def createSphere(self, pos):
+    def createSphere(self, pos, radius, node):
+        
+        mass = 1.0
+        res = 0.1
+        bodyFriction = 0.8
+        fallInertia = bullet.btVector3(0, 0, 0)
+        sphereId = len(self.bodies)
+        
+        sphereShape = bullet.btSphereShape(radius)
+        sphereShape.calculateLocalInertia(mass, fallInertia)
+        sphereMotionState = OgreMotionState(bullet.btTransform(bullet.btQuaternion(0, 0, 0, 1), bullet.btVector3(pos.x, pos.y, pos.z)), node)
+        sphereBodyCI = bullet.btRigidBody.btRigidBodyConstructionInfo(mass, sphereMotionState, sphereShape, fallInertia)
+        sphereBody = bullet.btRigidBody(sphereBodyCI)
+        sphereBody.setActivationState(4)
+        sphereBody.setCollisionFlags(bullet.btCollisionObject.CF_KINEMATIC_OBJECT)
+        self.world.addRigidBody(sphereBody)
+        
+        self.motionStates.append(sphereMotionState)
+        
+        self.bodies.append(sphereBody)
+        self.shapes.append(sphereShape)
         
         return None
         
-    def _addCube(self, pos, cubeBounds=ogre.Vector3(0.3, 0.3, 0.3)):
+    def _addCube(self, pos, cubeBounds=ogre.Vector3(0.3, 0.3, 0.3), tangentBundle=None):
         #cubeBounds=bullet.btVector3(0.3, 0.3, 0.3)):
         ent = self.sceneManager.createEntity("Bulletbox.mesh")
         ent.setMaterialName("TronNormalMap")
@@ -115,17 +133,18 @@ class PhysicsManager:
         node.scale(cubeBounds)
         #node.scale(cubeBounds.getX(), cubeBounds.getY(), cubeBounds.getZ())
         mass = 1.0
-        res = 0.1
-        bodyFriction = 0.8
+        res = 0.01
+        bodyFriction = 0.2
         fallInertia = bullet.btVector3(0, 0, 0)
         cubeIdx = len(self.bodies)
         
         cubeShape = bullet.btBoxShape(collisions.OgreBtConverter.to(cubeBounds))
         cubeShape.calculateLocalInertia(mass, fallInertia)
-        cubeMotionState = OgreMotionState(bullet.btTransform(bullet.btQuaternion(0, 0, 0, 1), bullet.btVector3(pos.x, pos.y, pos.z)), node)
+        cubeMotionState = OgreMotionState(bullet.btTransform(bullet.btQuaternion(0, 0, 0, 1), bullet.btVector3(pos.x, pos.y, pos.z)), node, tb=tangentBundle)
         cubeBodyCI = bullet.btRigidBody.btRigidBodyConstructionInfo(mass, cubeMotionState, cubeShape, fallInertia)
         cubeBody = bullet.btRigidBody(cubeBodyCI)
         cubeBody.setActivationState(4) #state is never deactivate
+        cubeMotionState.rb = cubeBody
         self.world.addRigidBody(cubeBody)
         
         self.motionStates.append(cubeMotionState)
@@ -139,38 +158,11 @@ class PhysicsManager:
         self.bodies.append(cubeBody)
         self.shapes.append(cubeShape)
         return cubeBody
-        """
-        cubeShape = bullet.btBoxShape(cubeBounds)
-        cubeShape.calculateLocalInertia(mass, fallInertia)
-        cubeMotionState = OgreMotionState(bullet.btTransform(bullet.btQuaternion(0, 0, 0, 1), bullet.btVector3(pos.x, pos.y, pos.z)), node)
-        cubeBodyCI = bullet.btRigidBody.btRigidBodyConstructionInfo(mass, cubeMotionState, cubeShape, fallInertia)
-        cubeBody = bullet.btRigidBody(cubeBodyCI)
-        self.world.addRigidBody(cubeBody)
-        
-        self.motionStates.append(cubeMotionState)
-        self.shapes.append(cubeShape)
-        self.bodies.append(cubeBody)
-        """
-        
-    def createHenchmen(self, pos, cubeBounds):
-        
-        cubeBody = self._addCube(pos + ogre.Vector3(0.0, 1.5, 0.0), cubeBounds)
-        return cubeBody
+            
     
     def update(self, dt):
         
-        if(self.elapsedTime > self.duration):
-            self.elapsedTime = 0.0
-            for i in range(0, len(self.cubes)):
-                pos = ogre.Vector3(self.startX + i * self.dx, self.startY + i * self.dy, -15.0 - i * self.dx)
-                cube = self.cubes[i]
-                transform = bullet.btTransform()
-                transform.setOrigin(bullet.btVector3(pos.x, pos.y, pos.z))
-                #cube.getBulletRigidBody().setWorldTransform(transform)
-                cube.setWorldTransform(transform)
-        self.elapsedTime += dt
         self.world.stepSimulation(dt, 10)
-        
         
         
         return None

@@ -3,7 +3,7 @@ import random
 import math
 import ogre.io.OIS as OIS
 
-class TangentBundle:
+class TangentBundle: #WTF is a tangent bundle? 
     def __init__(self, sphere):
         self.sphere = sphere
         self.r = 1.0
@@ -26,6 +26,7 @@ class TangentBundle:
             self.sphere[1] = self.minScale
     def setPosition(self, pos):
         self.normal = pos - self.sphere[0]._getDerivedPosition()
+        self.dsqr = self.normal.squaredLength()
         self.normal.normalise()
         self.pos = self.sphere[0]._getDerivedPosition() + self.normal * self.sphere[1]
       
@@ -63,8 +64,9 @@ class Planet:
         self.radius = radius
 
 class WorldController:
-    def __init__(self, scnMgr, entityController, camera):
+    def __init__(self, scnMgr, phyMgr, entityController, camera):
         
+        self.phyMgr = phyMgr
         self.scnMgr = scnMgr
         globalNode = scnMgr.getRootSceneNode().createChildSceneNode()
         self.globalNode = globalNode
@@ -77,7 +79,7 @@ class WorldController:
         numOfEnts = 200
         for i in range(numOfEnts):
             tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * 1.05])
-            entity = self.entityController.createEntity(self.scnMgr, tangentBundle)
+            entity = self.entityController.createEntity(self.scnMgr, self.phyMgr, tangentBundle)
             theta = random.uniform(0, 2.0 * ogre.Math.PI)
             phi = random.uniform(-ogre.Math.PI / 2, ogre.Math.PI / 2)
             rotTheta = ogre.Quaternion(ogre.Radian(theta), ogre.Vector3(0.0, 1.0, 0.0))
@@ -94,12 +96,12 @@ class WorldController:
     def loadPlayer(self, pageCoords):
         
         #pick a random planet
-        randPlanetId = random.randint(0, len(self.planets) - 1)
-        planet = self.planets[randPlanetId]
-        self.homePlanet = planet
+        #randPlanetId = random.randint(0, len(self.planets) - 1)
+        #planet = self.planets[randPlanetId]
+        #self.homePlanet = planet
         
         tangentBundle = TangentBundle([self.homePlanet[0], self.homePlanet[1] * 1.01])
-        entity = self.entityController.createEntity(self.scnMgr, tangentBundle)
+        entity = self.entityController.createEntity(self.scnMgr, self.phyMgr, tangentBundle)
         entity.speed = 1.0 / ogre.Math.PI * 10.0
         theta = random.uniform(0, 2.0 * ogre.Math.PI)
         
@@ -134,11 +136,14 @@ class WorldController:
         
     def loadPlanets(self, pageCoords):
         #create spheres
-        numOfSpheres = 25
+        numOfSpheres = 100
         
-        minSize = 25.0
+        minSize = 1.0
         maxSize = 50.0
-        self._createPlanet(pageCoords, minSize)
+        self._createPlanet(pageCoords, 25.0)
+        self.homePlanet = self.planets[-1]
+        
+        self.phyMgr.createWeaponPool(TangentBundle(self.homePlanet))
         
         for i in range(1, numOfSpheres):
             #WARNING: Does not generate uniform randoms on the sphere
@@ -147,7 +152,7 @@ class WorldController:
             randomOrient = ogre.Quaternion(randAnglePhi, ogre.Vector3(0.0, 1.0, 0.0))
             randomOrient = randomOrient * ogre.Quaternion(randAnglePho, ogre.Vector3(1.0, 0.0, 0.0))
             
-            randDistance = random.uniform(200.0, 250.0)
+            randDistance = random.uniform(100.0, 200.0)
             randScale = random.uniform(minSize, maxSize)
             self._createPlanet(pageCoords + randomOrient.zAxis() * randDistance, randScale)
             
@@ -164,6 +169,9 @@ class WorldController:
             self.playerEnt.onSignal(ogre.Vector3(0.0, 1.0, 0.0))
         elif key == OIS.KC_DOWN:
             self.playerEnt.onSignal(ogre.Vector3(0.0, -1.0, 0.0))
+            
+        if key == OIS.KC_SPACE:
+            self.playerEnt.onWeaponFire(self.phyMgr)
             
             
     def _createPlanet(self, pos, scale):
@@ -187,6 +195,7 @@ class WorldController:
         node.setScale(scaleSphere, scaleSphere, scaleSphere)
         self.planets.append((node, scale))
         
+        self.phyMgr.createSphere(node.getPosition(), scale * 1.0089, node)
             
                                     
         
