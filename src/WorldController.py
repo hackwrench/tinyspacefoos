@@ -3,6 +3,8 @@ import random
 import math
 import ogre.io.OIS as OIS
 
+import ogre.sound.OgreAL as OgreAL
+
 class TangentBundle: #WTF is a tangent bundle? 
     def __init__(self, sphere):
         self.sphere = sphere
@@ -73,6 +75,24 @@ class WorldController:
         self.planets = []
         self.camera = camera
         self.entityController = entityController
+        
+        self.soundManager = OgreAL.SoundManager()
+        sound = self.soundManager.createSound("Engine_Hum", "sndaoa2.ogg", True)
+        sound.setGain(0.8)
+        sound.play()
+        sound = self.soundManager.createSound("Engine_Hum2", "sndaoa1.ogg", True)
+        sound.setGain(1.2)
+        sound.play()
+        sound = self.soundManager.createSound("Music", "tinyworldsmix.ogg", True)
+        sound.play()
+        self.laserSounds = []
+        laserSound = self.soundManager.createSound("Laser1", "Laser_SHOOT.wav", False)
+        laserSound.setGain(0.5)
+        self.laserSounds.append(laserSound)
+        laserSound = self.soundManager.createSound("Laser2", "Laser_SHOOT2.wav", False)
+        laserSound.setGain(0.6)
+        self.laserSounds.append(laserSound)
+
     
     def loadEntities(self):
         
@@ -171,7 +191,7 @@ class WorldController:
             self.playerEnt.onSignal(ogre.Vector3(0.0, -1.0, 0.0))
             
         if key == OIS.KC_SPACE:
-            self.playerEnt.onWeaponFire(self.phyMgr)
+            self.playerEnt.onWeaponFire(self.phyMgr, self.laserSounds)
         if key == OIS.KC_LSHIFT:
             self.playerEnt.onCycleWeapon()
             

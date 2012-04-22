@@ -38,6 +38,55 @@ class OgreMotionState(bullet.btMotionState):
         
         
         #print "setWorldTrans", WorldTrans 
+class ActionEntity():
+    def __init__(self, world, ghostObject, sceneNode):
+        self.ghostObject = ghostObject
+        self.sceneNode= sceneNode
+        self.world = world
+    
+    def setEntity(self, entity):
+        self.entity = entity
+        
+    def updateAction(self, deltaTime):
+        transform = bullet.btTransform()
+        pos = self.sceneNode.getPosition()
+        
+        transform.setOrigin(bullet.btVector3(pos.x, pos.y, pos.z))
+        
+        self.ghostObject.setWorldTransform(transform)
+        
+        
+        manifoldArray = bullet.btManifoldArray()
+        pairArray = self.ghostObject.getOverlappingPairCache().getOverlappingPairArray()
+        collision = False
+        for i in range(pairArray.size()):
+            manifoldArray.clear()
+            pair = pairArray[i] 
+            collisionPair = self.world.getPairCache().findPair(pair.m_pProxy0, pair.m_pProxy1)
+            if collisionPair is None:
+                continue
+            proxyObject = collisionPair.m_pProxy1.m_clientObject
+            if proxyObject == self.target:
+                continue
+            if (collisionPair.m_algorithm):
+                collisionPair.m_algorithm.getAllContactManifolds(manifoldArray)
+            
+            for j in manifoldArray:
+                directionSign = None
+                if j.getBody0() == self.ghostObject:
+                    directionSign = -1.0
+                else:
+                    directionSign = 1.0
+                for k in range(j.getNumContacts()):
+                    pt = j.getContactPoint(k)
+                    if pt.getDistance() < 0.0:
+                        collision = True
+                        
+        if collision:
+            self.entity.onCollision()
+            
+    def debugDraw(self, debugDrawer):
+        return 
 
 class PhysicsManager:
     """
@@ -123,7 +172,33 @@ class PhysicsManager:
         self.shapes.append(sphereShape)
         
         return None
+    def createGhostObjectEntity(self, sceneNode, radius):
         
+        pos = sceneNode.getPosition()
+        transform = bullet.btTransform()
+        transform.setIdentity()
+        transform.setOrigin(bullet.btVector3(pos.x, pos.y, pos.z))
+        
+        ghostObject = bullet.btPairCachingGhostObject()
+        
+        ghostObject.setWorldTransform(transform)
+        
+        sphereShape = bullet.btSphereShape(1.0)
+        
+        ghostObject.setCollisionShape(sphereShape)
+        #ghostObject.setCollisionFlags(bullet.btCollisionObject.CO_GHOST_OBJECT)
+        
+        
+        
+        actionEntity = ActionEntity(self.world, ghostObject, sceneNode)
+        
+        self.world.addCollisionObject(ghostObject, bullet.btBroadphaseProxy.SensorTrigger, bullet.btBroadphaseProxy.AllFilter)
+        #self.world.getBroadphase().getOverlappingPairCache().setInternalGhostPairCallback(bullet.btGhostPairCallback())
+        #self.world.addAction(actionEntity)
+        
+        self.shapes.append(sphereShape)
+        
+        return actionEntity       
     def _addCube(self, pos, cubeBounds=ogre.Vector3(0.3, 0.3, 0.3), tangentBundle=None):
         #cubeBounds=bullet.btVector3(0.3, 0.3, 0.3)):
         ent = self.sceneManager.createEntity("Bulletbox.mesh")

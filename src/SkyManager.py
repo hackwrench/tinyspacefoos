@@ -21,13 +21,13 @@ class SkyManager:
         self.caelumSystem = caelum.CaelumSystem(ogre.Root.getSingletonPtr(), self.sceneManager, componentMask)
         self.caelumSystem.attachViewport(viewport)
         
-        self.caelumSystem.getUniversalClock().setGregorianDateTime(1999, 06, 06, 0, 0, 0.0)
+        self.caelumSystem.getUniversalClock().setGregorianDateTime(1999, 06, 06, 04, 30, 0.0)
         
         #self.caelumSystem.autoConfigure(componentMask)
         #self.caelumSystem.setObserverLatitude(ogre.Degree(0))
         #self.caelumSystem.setObserverLongitude(ogre.Degree(0))
         self.caelumSystem.setEnsureSingleLightSource(True)
-        self.caelumSystem.getUniversalClock().setTimeScale(500)
+        self.caelumSystem.getUniversalClock().setTimeScale(01)
         
         dome = self.caelumSystem.getSkyDome()
         

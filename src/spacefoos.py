@@ -24,7 +24,7 @@ from WorldController import (WorldController)
 from EntityController import (EntityController)
 from PhysicsManager import (PhysicsManager)
 
-import ogre.sound.OgreAL as OgreAL
+
 
 from math import *
 
@@ -50,8 +50,8 @@ class SkyBoxApplication(sf.Application):
         light = sceneManager.createLight('MainLight')
         light.setPosition (20, 80, 50)
 
-        #self.doc = canvas.Document(sceneManager, self.viewport, "DemoLayout.txt")
-        self.doc = None
+        self.doc = canvas.Document(sceneManager, self.viewport, "DemoLayout.txt")
+        #self.doc = None
         sceneManager.setShadowUseInfiniteFarPlane(True)
         
         #setup compositor
@@ -61,33 +61,25 @@ class SkyBoxApplication(sf.Application):
 
         self.camera.setFarClipDistance(5000.0)
         self.camera.setNearClipDistance(0.2)
-        #self.camera.setPosition(0.0, 1.0, -1.1)
+        self.camera.setPosition(0.0, 1.0, -1.1)
         
         
         self.sceneManager.setShadowTechnique(ogre.SHADOWTYPE_TEXTURE_ADDITIVE)
         
         
-        self.soundManager = OgreAL.SoundManager()
-        sound = self.soundManager.createSound("Engine_Hum", "sndaoa2.ogg", True)
-        sound.setGain(0.8)
-        sound.play()
-        sound = self.soundManager.createSound("Engine_Hum2", "sndaoa1.ogg", True)
-        sound.setGain(1.2)
-        sound.play()
-        sound = self.soundManager.createSound("Music", "tinyworldsmix.ogg", True)
-        sound.play()
-
+        
         
     def _createFrameListener(self):
-        self.frameListener = SkyBoxListener(self.renderWindow, self.camera, self.sceneManager, self)
+        self.frameListener = SkyBoxListener(self.renderWindow, self.camera, self.sceneManager, self, self.viewport)
         self.frameListener.doc = self.doc
         self.root.addFrameListener(self.frameListener)
         self.frameListener.showDebugOverlay(False)
 
 
 class SkyBoxListener(sf.FrameListener):
-    def __init__(self, renderWindow, camera, sceneManager, app):
+    def __init__(self, renderWindow, camera, sceneManager, app, viewport):
         sf.FrameListener.__init__(self, renderWindow, camera)
+        self.viewport=  viewport
         self.sceneManager = sceneManager
         self.app=app
         self.lastTime = 0
@@ -152,18 +144,21 @@ class SkyBoxListener(sf.FrameListener):
                           
     def frameRenderingQueued(self, frameEvent):
         retVal = True
+        #cm = ogre.CompositorManager.getSingleton()
+        #cm.setCompositorEnabled(self.viewport, "Bloom", False)
+        #status = self.app.doc.getElementByName("stats")
+        #status.setText("HELLO WORLD")
+        
+        #self.app.doc.update()
+        
+        #cm.setCompositorEnabled(self.viewport, "Bloom", True)
         
         self.Keyboard.capture()
         self.Mouse.capture()
         
         if not self.keyPressed(frameEvent):
             return False
-        """
-        if self._isToggleKeyDown(OIS.KC_LEFT, 0.4):
-            self.worldController.onKeyDownEvent(OIS.KC_LEFT)
-        elif self._isToggleKeyDown(OIS.KC_RIGHT, 0.4):
-            self.worldController.onKeyDownEvent(OIS.KC_RIGHT)
-        """
+       
         self.worldController.onUpdate(frameEvent.timeSinceLastFrame)
         self.phyManager.update(frameEvent.timeSinceLastFrame)
         

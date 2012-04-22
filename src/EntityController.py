@@ -16,11 +16,18 @@ class EntityController:
         playerEnt = scnMgr.createEntity("RZR-002.mesh")
         playerEnt.setCastShadows(True)
         playerNode.attachObject(playerEnt)
+        scale = 0.02
         playerNode.setScale(0.01, 0.02, 0.01)
 
-        entity = Entity(playerNode, tangentBundle)
+        #This is not working!!!
+        #phyEntity = phyMgr.createGhostObjectEntity(playerNode, scale)
+        
+        entity = Entity(playerNode, tangentBundle, None)
         entity.rotU = random.uniform(0.0, 2.0 * ogre.Math.PI)
         entity.rotV = random.uniform(0.0, 2.0 * ogre.Math.PI)
+        
+        #phyEntity.setEntity(entity)
+        
         self.ents.append(entity)
         
         
@@ -30,10 +37,13 @@ class EntityController:
     def onUpdate(self, dt):
         for ent in self.ents:
             ent._advance(dt)
+
+
     
 class Entity: 
-    def __init__(self, node, tangentBundle):
+    def __init__(self, node, tangentBundle, phyEntity, isPlayer=False):
         self.sceneNode = node
+        self.phyEntity = phyEntity
         self.tangentBundle = tangentBundle
         self.speed = 1.0 / ogre.Math.PI * random.uniform(0.5, 10.0)#angular speed
         self.rotU = 0.0
@@ -47,9 +57,15 @@ class Entity:
         self.weaponCycleDuration = 1000
         
         self.numberOfWeaponTypes = 3
-        self.weaponType = 0
+        self.weaponType = 2
+        
+        self.isPlayer = isPlayer
         
         return None
+    
+    def onCollision(self):
+        if self.isPlayer:
+           print "Plyaer collide" 
     
     def onSignal(self, signal):
         """
@@ -57,7 +73,7 @@ class Entity:
         """
         self.signal += signal
     
-    def onWeaponFire(self, phyMgr):
+    def onWeaponFire(self, phyMgr, sounds):
         
         if(self.timer.getMilliseconds() > self.shootDuration):
              impulse = self.sceneNode.getOrientation().zAxis()
@@ -65,15 +81,19 @@ class Entity:
              weaponSelect = self.weaponType % self.numberOfWeaponTypes
              power = 17.0
              if(weaponSelect == 0):
+                 sounds[0].play()
                  power = 17.0
              elif weaponSelect == 1:
+                 sounds[0].play()
                  power = 10.0
              elif weaponSelect == 2:
                  power = 5.0
+                 sounds[1].play()
              
              impulse *= power#7.0
              phyMgr.fireCube(self.sceneNode.getPosition(), impulse)
              self.timer.reset()
+             
              
         
         
@@ -99,6 +119,9 @@ class Entity:
         return xVec, yVec, zVec
     
     def _advance(self, dt):
+        
+        #self.phyEntity.updateAction(dt)
+        
         tangentBundle = self.tangentBundle
         tangentBundle.setPosition(self.sceneNode.getPosition())
         orient = self.sceneNode.getOrientation()
