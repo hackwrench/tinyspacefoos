@@ -57,7 +57,7 @@ class Entity:
         self.weaponCycleDuration = 1000
         
         self.numberOfWeaponTypes = 3
-        self.weaponType = 2
+        self.weaponType = 0
         
         self.isPlayer = isPlayer
         
@@ -82,19 +82,25 @@ class Entity:
              power = 17.0
              if(weaponSelect == 0):
                  sounds[0].play()
-                 power = 17.0
+                 power = 2.0 * self.speed
              elif weaponSelect == 1:
                  sounds[0].play()
-                 power = 10.0
+                 power = 2.0 * self.speed
              elif weaponSelect == 2:
-                 power = 5.0
+                 power = 1.0 * self.speed
                  sounds[1].play()
              
              impulse *= power#7.0
              phyMgr.fireCube(self.sceneNode.getPosition(), impulse)
              self.timer.reset()
              
-             
+    
+    def increaseSpeed(self):
+        self.speed += 1.0 / ogre.Math.PI
+    def decreaseSpeed(self):
+        self.speed -= 1.0 / ogre.Math.PI
+        if self.speed < 1.0 / ogre.Math.PI:
+            self.speed = 1.0 / ogre.Math.PI         
         
         
     def onCycleWeapon(self):

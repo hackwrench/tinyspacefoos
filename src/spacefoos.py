@@ -47,17 +47,14 @@ class SkyBoxApplication(sf.Application):
         #sceneManager.setSkyBox(True, "Examples/SpaceSkyBox")
         
         # Need a light 
-        light = sceneManager.createLight('MainLight')
-        light.setPosition (20, 80, 50)
+        #light = sceneManager.createLight('MainLight')
+        #light.setPosition (20, 80, 50)
 
         self.doc = canvas.Document(sceneManager, self.viewport, "DemoLayout.txt")
         #self.doc = None
         sceneManager.setShadowUseInfiniteFarPlane(True)
         
-        #setup compositor
-        cm = ogre.CompositorManager.getSingleton()
-        cm.addCompositor(self.viewport, "Bloom")
-        cm.setCompositorEnabled(self.viewport, "Bloom", True)
+        
 
         self.camera.setFarClipDistance(5000.0)
         self.camera.setNearClipDistance(0.2)
@@ -88,6 +85,17 @@ class SkyBoxListener(sf.FrameListener):
         self.totalTime = 0
         self.wireframe= False
         
+        self.loadingDuration = 1000
+        self.loadingTimer = ogre.Timer()
+        self.loading = True
+        
+        self._setupInput()
+    def _load(self):
+        #setup compositor
+        cm = ogre.CompositorManager.getSingleton()
+        cm.addCompositor(self.viewport, "Bloom")
+        cm.setCompositorEnabled(self.viewport, "Bloom", True)
+        
         self.entityController = EntityController()
         self.phyManager = PhysicsManager(self.sceneManager)
         #self.phyManager.createWeaponPool()
@@ -98,8 +106,6 @@ class SkyBoxListener(sf.FrameListener):
         self.skyManager = SkyManager(self.sceneManager, self.renderWindow.getViewport(0))
         self.renderWindow.addListener(self.skyManager.caelumSystem)
         ogre.Root.getSingletonPtr().addFrameListener(self.skyManager.caelumSystem)
-        
-        self._setupInput()
     
     def _setupInput(self):
         # Initialize OIS.
@@ -139,6 +145,10 @@ class SkyBoxListener(sf.FrameListener):
         if self.Keyboard.isKeyDown(OIS.KC_LSHIFT):
         #if self._isToggleKeyDown(OIS.KC_LSHIFT, 0.1): #why this no work?
             self.worldController.onKeyDownEvent(OIS.KC_LSHIFT)
+        if self.Keyboard.isKeyDown(OIS.KC_W):
+            self.worldController.onKeyDownEvent(OIS.KC_W)
+        if self.Keyboard.isKeyDown(OIS.KC_S):
+            self.worldController.onKeyDownEvent(OIS.KC_S)
         
         return True   
                           
@@ -153,6 +163,17 @@ class SkyBoxListener(sf.FrameListener):
         
         #cm.setCompositorEnabled(self.viewport, "Bloom", True)
         
+        if (self.loadingTimer.getMilliseconds() < self.loadingDuration):
+            status = self.app.doc.getElementByName("stats")
+            status.setText("...Doing Procedural Generation...Please Be Patient")
+            self.app.doc.update()
+            return True
+        
+        if self.loading:
+            self.loading = False
+            self._load()
+            return True
+        
         self.Keyboard.capture()
         self.Mouse.capture()
         
@@ -161,6 +182,7 @@ class SkyBoxListener(sf.FrameListener):
        
         self.worldController.onUpdate(frameEvent.timeSinceLastFrame)
         self.phyManager.update(frameEvent.timeSinceLastFrame)
+        self.skyManager.randomIntensityRain()
         
         return retVal
 

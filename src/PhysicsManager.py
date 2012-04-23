@@ -202,7 +202,7 @@ class PhysicsManager:
     def _addCube(self, pos, cubeBounds=ogre.Vector3(0.3, 0.3, 0.3), tangentBundle=None):
         #cubeBounds=bullet.btVector3(0.3, 0.3, 0.3)):
         ent = self.sceneManager.createEntity("Bulletbox.mesh")
-        ent.setMaterialName("TronNormalMap")
+        ent.setMaterialName("GridNormalMap3")
         node = self.sceneManager.getRootSceneNode().createChildSceneNode()
         node.attachObject(ent)
         node.scale(cubeBounds)

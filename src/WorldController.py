@@ -5,6 +5,8 @@ import ogre.io.OIS as OIS
 
 import ogre.sound.OgreAL as OgreAL
 
+from PerlinSceneryGen import PerlinSceneryGen as PerlinGen
+
 class TangentBundle: #WTF is a tangent bundle? 
     def __init__(self, sphere):
         self.sphere = sphere
@@ -31,6 +33,19 @@ class TangentBundle: #WTF is a tangent bundle?
         self.dsqr = self.normal.squaredLength()
         self.normal.normalise()
         self.pos = self.sphere[0]._getDerivedPosition() + self.normal * self.sphere[1]
+        
+    def uvMap(self, pos):
+        cos = ogre.Math.Cos
+        sin = ogre.Math.Sin
+        retPos = self.sphere[0]._getDerivedPosition() + ogre.Vector3(self.minScale * cos(pos.y)*sin(pos.x), self.minScale * sin(pos.y)*sin(pos.x), self.minScale * cos(pos.x))
+        ru = ogre.Vector3(self.minScale * cos(pos.y) * cos(pos.x), self.minScale * cos(pos.y) * sin(pos.x), -self.minScale * sin(pos.y))
+        #ru = ogre.Vector3(-self.r * sin(self.phi) * sin(self.theta), self.r * sin(self.phi) * cos(self.theta), 0)
+        normal = retPos -self.sphere[0]._getDerivedPosition()
+        normal.normalise()
+        ru.normalise()
+        return retPos, normal, -ru
+        
+        
       
     def setPosition2(self, pos):
         print "posIn: ", pos
@@ -87,12 +102,13 @@ class WorldController:
         sound.play()
         self.laserSounds = []
         laserSound = self.soundManager.createSound("Laser1", "Laser_SHOOT.wav", False)
-        laserSound.setGain(0.5)
+        laserSound.setGain(0.2)
         self.laserSounds.append(laserSound)
         laserSound = self.soundManager.createSound("Laser2", "Laser_SHOOT2.wav", False)
-        laserSound.setGain(0.6)
+        laserSound.setGain(0.2)
         self.laserSounds.append(laserSound)
 
+        self.materials = ["GridNormalMap", "GridNormalMap1", "GridNormalMap2", "GridNormalMap3"]
     
     def loadEntities(self):
         
@@ -149,19 +165,41 @@ class WorldController:
         self.entityController.onUpdate(dt)   
          
     def onPageLoad(self, pageCoords):  
-        self.loadPlanets(pageCoords)  
+        self.loadPlanets(pageCoords) 
+       
+         
+         
         self.loadPlayer(pageCoords)
         self.loadEntities()
         
+    
+    def loadProceduralMesh(self, perlinGen):
+        
+        #procedural level
+        id = len(self.planets)
+        manMesh = self.scnMgr.createManualObject("RandomShit"+str(id))
+        
+        perlinGen.setMaterial(self.materials[(len(self.planets) + 1) % len(self.materials)])
+        perlinGen.generate(manMesh)
+        
+        mesh = manMesh.convertToMesh("RandomShitMesh"+str(id))
+        
+        self.randomShit = self.scnMgr.createEntity(mesh.getName())
+        self.randomShit.setCastShadows(False) 
+        self.scnMgr.getRootSceneNode().createChildSceneNode().attachObject(self.randomShit) 
         
     def loadPlanets(self, pageCoords):
         #create spheres
-        numOfSpheres = 100
+        numOfSpheres = 50
         
         minSize = 1.0
         maxSize = 50.0
         self._createPlanet(pageCoords, 25.0)
+        
         self.homePlanet = self.planets[-1]
+        perlinGen = PerlinGen(TangentBundle(self.homePlanet), maxLevel=4)
+        print "Generating procedural stuff on planets, please be patient"
+        self.loadProceduralMesh(perlinGen)
         
         self.phyMgr.createWeaponPool(TangentBundle(self.homePlanet))
         
@@ -175,6 +213,11 @@ class WorldController:
             randDistance = random.uniform(100.0, 200.0)
             randScale = random.uniform(minSize, maxSize)
             self._createPlanet(pageCoords + randomOrient.zAxis() * randDistance, randScale)
+            planet = self.planets[-1]
+            perlinGen = PerlinGen(TangentBundle(planet), normalScale = 1.2, maxLevel=1, numOfPoints=50)
+            print "Generating procedural stuff on planets, please be patient"
+            self.loadProceduralMesh(perlinGen)
+            
             
     def onKeyDownEvent(self, key):
         """
@@ -194,16 +237,25 @@ class WorldController:
             self.playerEnt.onWeaponFire(self.phyMgr, self.laserSounds)
         if key == OIS.KC_LSHIFT:
             self.playerEnt.onCycleWeapon()
+        
+        if key == OIS.KC_W:
+            self.playerEnt.increaseSpeed()
+        if key == OIS.KC_S:
+            self.playerEnt.decreaseSpeed()    
+            
             
             
     def _createPlanet(self, pos, scale):
         ent = self.scnMgr.createEntity("geosphere4500.mesh")
-        ent.setMaterialName("GridNormalMap")
+        
+        
+        matName = self.materials[(len(self.planets)) % len(self.materials)]
+        ent.setMaterialName(matName)
         mesh = ent.getMesh()
         mesh.setAutoBuildEdgeLists(True)
         mesh.buildEdgeList()
         
-        mat = ogre.MaterialManager.getSingleton().getByName("GridNormalMap").setReceiveShadows(True)
+        mat = ogre.MaterialManager.getSingleton().getByName(matName).setReceiveShadows(True)
         ent.setCastShadows(True)
         bb = ent.getMesh().getBoundingSphereRadius()
         scaleSphere = 1.0 / bb * scale

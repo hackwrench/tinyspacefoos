@@ -1,6 +1,7 @@
 import ogre.renderer.OGRE as ogre
 import ogre.addons.caelum as caelum
 import ctypes
+import random
 class SkyManager:
     def __init__(self, sceneManager, viewport):
         self.sceneManager = sceneManager
@@ -21,13 +22,13 @@ class SkyManager:
         self.caelumSystem = caelum.CaelumSystem(ogre.Root.getSingletonPtr(), self.sceneManager, componentMask)
         self.caelumSystem.attachViewport(viewport)
         
-        self.caelumSystem.getUniversalClock().setGregorianDateTime(1999, 06, 06, 04, 30, 0.0)
+        self.caelumSystem.getUniversalClock().setGregorianDateTime(1999, 01, 01, 04, 30, 0.0)
         
         #self.caelumSystem.autoConfigure(componentMask)
         #self.caelumSystem.setObserverLatitude(ogre.Degree(0))
         #self.caelumSystem.setObserverLongitude(ogre.Degree(0))
         self.caelumSystem.setEnsureSingleLightSource(True)
-        self.caelumSystem.getUniversalClock().setTimeScale(01)
+        self.caelumSystem.getUniversalClock().setTimeScale(500)
         
         dome = self.caelumSystem.getSkyDome()
         
@@ -68,14 +69,26 @@ class SkyManager:
         precip = self.caelumSystem.getPrecipitationController()
         
         precip.setPresetType(caelum.PRECTYPE_DRIZZLE)
-        #precip.setSpeed(0.001)
-        precip.setIntensity(0.7)
+        precip.setSpeed(0.0005)
+        precip.setIntensity(0.2)
         #precip.setAutoDisableThreshold(-1)
         #precip.setAutoCameraSpeed()
         precip.setManualCameraSpeed(ogre.Vector3(0.0, -0.1, -1.0))
+        self.precip = precip
         
+        self.timer = ogre.Timer()
+        self.duration = 30000
+        self.randomIntensity = []
+        for i in range(10):
+            self.randomIntensity.append(random.uniform(0.2, 0.5))
+        self.randId = 0
+        self.precip.setIntensity(self.randomIntensity[self.randId % 10])
+    def randomIntensityRain(self):
         
-        
+        if self.timer.getMilliseconds() > (self.duration):
+            #self.precip.setIntensity(self.randomIntensity[self.randId % 10])
+            self.precip.setIntensity(random.uniform(0.0, 0.5))
+            self.randId += 1
 
         
         
